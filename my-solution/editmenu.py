@@ -1,4 +1,4 @@
-from flask import Flask, render_template, url_for, request, redirect
+from flask import Flask, render_template, url_for, request, redirect, flash, get_flashed_messages
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from database_setup import Base, Restaurant, MenuItem
@@ -13,11 +13,25 @@ session = DBSession()
 
 
 @app.route('/')
+def restaurantList():
+    restaurants = session.query(Restaurant).all()
+    output = ''
+    for r in restaurants:
+        output += "<ul><a href='{}''>{}</a></ul>".format(url_for('restaurantMenu', restaurant_id=r.id), r.name)
+        output += '<br>'
+    return output
+
+
 @app.route('/restaurants/<int:restaurant_id>/')
 def restaurantMenu(restaurant_id):
     restaurant = session.query(Restaurant).filter_by(id=restaurant_id).one()
     items = session.query(MenuItem).filter_by(restaurant_id=restaurant_id)
     output = ''
+    messages = get_flashed_messages()
+    for m in messages:
+        if m:
+            output += m
+            output += '<br><br>'
     for i in items:
         output += i.name
         output += '</br>'
@@ -52,10 +66,9 @@ def editMenuItem(restaurant_id, MenuID):
             editedItem.name = request.form['name']
         session.add(editedItem)
         session.commit()
+        flash("Name edited!")
         return redirect(url_for('restaurantMenu', restaurant_id=restaurant_id))
     else:
-        # USE THE RENDER_TEMPLATE FUNCTION BELOW TO SEE THE VARIABLES YOU
-        # SHOULD USE IN YOUR EDITMENUITEM TEMPLATE
         return render_template('editmenuitem.html', restaurant_id=restaurant_id, MenuID=MenuID, item=editedItem)
 
 
@@ -64,5 +77,6 @@ def deleteMenuItem(restaurant_id, menu_id):
     return "page to delete a new menu item."
 
 if __name__ == '__main__':
+    app.secret_key = "my key"
     app.debug = True
     app.run(host='0.0.0.0', port=5000)
